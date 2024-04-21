@@ -74,7 +74,7 @@ class DiscordBot:
                             #         if 
                             #             request_chatgpt(user_message, 1)
                             # else:
-                            #     response = request_chatgpt(user_message)
+                            response = request_chatgpt(user_message)
                             await message.channel.send(response)
                     except Exception as e:
                         await message.channel.send(f"Error sending message: {e}")
