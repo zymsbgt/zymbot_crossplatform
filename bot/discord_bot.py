@@ -71,8 +71,7 @@ class DiscordBot:
                             # Send prompt to ChatGPT
                             if message.guild is not None:
                                 if message.guild.id == 443253214859755522:
-                                    if 
-                                        response = request_chatgpt(user_message, 1)
+                                    if response = request_chatgpt(user_message, 1)
                             else:
                                 response = request_chatgpt(user_message)
                             await message.channel.send(response)
