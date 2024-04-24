@@ -3,7 +3,7 @@ import discord
 import asyncio
 
 class DiscordBot:
-    # Setup bot global variables here
+    # Setup bot global variables here, if any
 
     def __init__(self, token):
         self.token = token
@@ -65,7 +65,7 @@ class DiscordBot:
                     return
                 
                 await asyncio.sleep(4)
-                if (message.channel.id != 1220894297734512640) or (message.channel.id != 1227499494388793345):
+                if message.channel.id != 1220894297734512640 and message.channel.id != 1227499494388793345:
                     try:
                         async with message.channel.typing():
                             # # Send prompt to ChatGPT
@@ -81,5 +81,3 @@ class DiscordBot:
                         print(response)
 
         self.DiscordBotClient.run(self.token)
-
-    # Other Discord-specific methods
