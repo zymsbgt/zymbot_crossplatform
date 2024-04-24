@@ -65,7 +65,7 @@ class DiscordBot:
                     return
                 
                 await asyncio.sleep(4)
-                if message.channel.id != 1220894297734512640 or 1227499494388793345:
+                if (message.channel.id != 1220894297734512640) or (message.channel.id != 1227499494388793345):
                     try:
                         async with message.channel.typing():
                             # # Send prompt to ChatGPT
