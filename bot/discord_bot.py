@@ -68,13 +68,11 @@ class DiscordBot:
                 if message.channel.id != 1220894297734512640 and message.channel.id != 1227499494388793345:
                     try:
                         async with message.channel.typing():
-                            # # Send prompt to ChatGPT
-                            # if message.guild is not None:
-                            #     if message.guild.id == 443253214859755522:
-                            #         if 
-                            #             request_chatgpt(user_message, 1)
-                            # else:
-                            response = request_chatgpt(user_message)
+                            # Send prompt to ChatGPT
+                            if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772:
+                                response = request_chatgpt(user_message, 1)
+                            else:
+                                response = request_chatgpt(user_message)
                             await message.channel.send(response)
                     except Exception as e:
                         await message.channel.send(f"Error sending message: {e}")
