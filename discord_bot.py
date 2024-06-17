@@ -1,5 +1,6 @@
-from common_utils import request_chatgpt, TriggerLinks, DownloadVideo
+from common_utils import request_deepinfra, request_kagi, TriggerLinks, DownloadVideo
 import discord
+from discord.ext import commands
 import asyncio
 
 class DiscordBot:
@@ -52,12 +53,11 @@ class DiscordBot:
                 # Create a downloader algorithm for Twitter
 
             username = str(message.author).split('#')[0]
-            user_message = str(message.content)
             channel = str(message.channel.name)
             guild = str(message.guild.name)
 
             if self.DiscordBotClient.user.mentioned_in(message):
-                print(f'{username} on #{channel} in "{guild}": {user_message}')
+                print(f'{username} on #{channel} in "{guild}": {message.content}')
 
                 if any(links in message.content for links in TriggerLinks):
                     print("Download module activated, not replying with chatbot")
@@ -70,9 +70,11 @@ class DiscordBot:
                         async with message.channel.typing():
                             # Send prompt to ChatGPT
                             if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772:
-                                response = request_chatgpt(user_message, 1)
+                                response = request_deepinfra(message.content, 1)
+                            elif "flashteens" in message.content.lower() or "web search" in message.content.lower():
+                                response = request_kagi(message.content)
                             else:
-                                response = request_chatgpt(user_message)
+                                response = request_deepinfra(message.content, 0)
 
                             # TODO: If the Discord server ID is '612289903769944064', replace every Discord ping with the name of the user
                             response = response.replace("<@343451476137607179>", "FlashTeens")
