@@ -1,4 +1,4 @@
-from bot.common_utils import request_chatgpt, TriggerLinks, DownloadVideo
+from common_utils import request_chatgpt, TriggerLinks, DownloadVideo
 import discord
 import asyncio
 
@@ -73,6 +73,11 @@ class DiscordBot:
                                 response = request_chatgpt(user_message, 1)
                             else:
                                 response = request_chatgpt(user_message)
+
+                            # TODO: If the Discord server ID is '612289903769944064', replace every Discord ping with the name of the user
+                            response = response.replace("<@343451476137607179>", "FlashTeens")
+                            response = response.replace("<@559210445991444480>", "OTS")
+                            response = response.replace("<@1017991668194099200>", "FT Anti-Ping Bot")
                             await message.channel.send(response)
                     except Exception as e:
                         await message.channel.send(f"Error sending message: {e}")
