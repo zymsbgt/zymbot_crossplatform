@@ -22,7 +22,7 @@ def PromptBuilder(user_message):
     messages.append({"role": "user", "content": user_message})
     return messages
 
-def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator ZymBot, 2 = Web Search
+def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator ZymBot, 2 = Banned User
     try:
         # messages = PromptBuilder(user_message)
         # print(f"Sending prompt to ChatGPT: {messages[-6:]}")
@@ -49,14 +49,24 @@ def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator
             messages = [{"role": "system", "content": "You are ZymBot, a chatbot chatting with humans on Discord. Your Discord tag is <@302299077368872961>. If someone types this in a message, they are mentioning you on Discord."},{"role": "user", "content": user_message}]
         print(f"Sending prompt to DeepInfra: {messages}")
 
-        completion = deepInfra.chat.completions.create(
-            model="cognitivecomputations/dolphin-2.6-mixtral-8x7b",
-            messages=messages,
-            max_tokens=665,
-            stop=None,
-            stream=False
-        )
-        return completion.choices[0].message.content
+        if personaType == 2: 
+            completion = deepInfra.chat.completions.create(
+                model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+                messages=messages,
+                max_tokens=665,
+                stop=None,
+                stream=False
+            )
+            return completion.choices[0].message.content
+        else:
+            completion = deepInfra.chat.completions.create(
+                model="cognitivecomputations/dolphin-2.6-mixtral-8x7b",
+                messages=messages,
+                max_tokens=665,
+                stop=None,
+                stream=False
+            )
+            return completion.choices[0].message.content
 
     except Exception as e:
         print(f"An error occurred: {e}")

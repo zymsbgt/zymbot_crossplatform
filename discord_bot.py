@@ -71,6 +71,8 @@ class DiscordBot:
                             # Send prompt to ChatGPT
                             if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772:
                                 response = request_deepinfra(message.content, 1)
+                            elif message.author.id == 877454020283871242:
+                                response = request_deepinfra(message.content, 2)
                             elif "flashteens" in message.content.lower() or "web search" in message.content.lower():
                                 response = request_kagi(message.content)
                             else:
