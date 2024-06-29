@@ -45,8 +45,8 @@ class DiscordBot:
                     if message.guild is not None:
                         if message.guild.id == 612289903769944064: # RoFT Fan Chat
                             return
-                    await message.add_reaction("🎬")
-                    await message.add_reaction("🎵")
+                    # await message.add_reaction("🎬")
+                    # await message.add_reaction("🎵")
                 else:
                     await DownloadVideo("discord", message.content, CheckDebugMode(message.guild.id))
                 
@@ -72,6 +72,7 @@ class DiscordBot:
                             if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772:
                                 response = request_deepinfra(message.content, 1)
                             elif message.author.id == 877454020283871242:
+                                print("Martin Law mode activated")
                                 response = request_deepinfra(message.content, 2)
                             elif "flashteens" in message.content.lower() or "web search" in message.content.lower():
                                 response = request_kagi(message.content)
