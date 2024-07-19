@@ -22,7 +22,7 @@ def PromptBuilder(user_message):
     messages.append({"role": "user", "content": user_message})
     return messages
 
-def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator ZymBot, 2 = Banned User
+def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator ZymBot, 2 = Llama 3
     try:
         # messages = PromptBuilder(user_message)
         # print(f"Sending prompt to ChatGPT: {messages[-6:]}")
@@ -51,7 +51,7 @@ def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator
 
         if personaType == 2: 
             completion = deepInfra.chat.completions.create(
-                model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+                model="meta-llama/Meta-Llama-3-8B-Instruct",
                 messages=messages,
                 max_tokens=665,
                 stop=None,
@@ -60,7 +60,7 @@ def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator
             return completion.choices[0].message.content
         else:
             completion = deepInfra.chat.completions.create(
-                model="cognitivecomputations/dolphin-2.6-mixtral-8x7b",
+                model="cognitivecomputations/dolphin-2.9.1-llama-3-70b",
                 messages=messages,
                 max_tokens=665,
                 stop=None,
