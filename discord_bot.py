@@ -74,7 +74,7 @@ class DiscordBot:
                             elif message.guild is not None and message.guild.id == 612289903769944064:
                                 print("Message sent in RoFT, using Llama 3")
                                 response = request_deepinfra(message.content, 2)
-                            elif "flashteens" in message.content.lower() or "web search" in message.content.lower():
+                            elif "flashteens" in message.content.lower() or "web search" in message.content.lower() or "roft" in message.content.lower():
                                 response = request_kagi(message.content)
                             else:
                                 response = request_deepinfra(message.content, 0)
