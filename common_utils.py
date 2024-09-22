@@ -3,6 +3,7 @@ import time
 from openai import OpenAI
 from dotenv import load_dotenv
 import requests
+import re
 
 load_dotenv()
 
@@ -60,7 +61,7 @@ def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator
             return completion.choices[0].message.content
         else:
             completion = deepInfra.chat.completions.create(
-                model="cognitivecomputations/dolphin-2.9.1-llama-3-70b",
+                model="Qwen/Qwen2-72B-Instruct",
                 messages=messages,
                 max_tokens=665,
                 stop=None,
@@ -75,14 +76,19 @@ def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator
 
 def request_kagi(user_message):
     try:
+        api_key = os.getenv("KAGI_API_KEY")
+        if not api_key:
+            print("Error: KAGI_API_KEY is not set.")
+            return "API key is missing."
+
         base_url = 'https://kagi.com/api/v0/fastgpt'
         data = {
             "query": user_message,
         }
-        headers = {'Authorization': f'Bot {os.getenv("KAGI_API_KEY")}'}
+        headers = {'Authorization': f'Bot {api_key}'}
 
         response = requests.post(base_url, headers=headers, json=data)
-        #TODO: handle response
+        
         if response.status_code == 200:
             response_data = response.json()
             data = response_data.get("data", {})
@@ -90,12 +96,16 @@ def request_kagi(user_message):
             tokens = data.get("tokens", 0)
             references = data.get("references", [])
 
-            # Print the output
-            # print("Output:")
-            # print(output)
-
             # Print the number of tokens
             print("\nNumber of Tokens:", tokens)
+
+            # Create a mapping of reference numbers to URLs
+            reference_map = {str(i + 1): ref.get("url", "") for i, ref in enumerate(references)}
+
+            # Hyperlink the references in the output text using Discord formatting
+            for ref_num, ref_url in reference_map.items():
+                if ref_url:  # Only hyperlink if the URL is valid
+                    output = re.sub(rf'【{ref_num}】', f'[【{ref_num}】](<{ref_url}>)', output)
 
             # Print references
             print("\nReferences:")
@@ -111,7 +121,7 @@ def request_kagi(user_message):
     except Exception as e:
         print(f"An error occurred: {e}")
         # print(completion.choices[0].message.content)
-        return "An error occurred while generating this response."  # Return an empty string or handle the error appropriately
+        return "An error occurred while generating this response"
 
 async def DownloadVideo(ChatPlatform, MessageContent, DebugMode = False, AudioOnly = False):
     pass
