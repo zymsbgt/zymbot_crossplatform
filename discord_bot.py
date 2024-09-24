@@ -73,7 +73,10 @@ class DiscordBot:
                             if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772:
                                 response = request_deepinfra(message.content, 1)
                             elif "flashteens" in message.content.lower() or "web search" in message.content.lower() or "roft" in message.content.lower():
-                                response = request_kagi(message.content)
+                                if message.guild is None:
+                                    response = "Error: Your message has triggered ZymBot to search the internet for answers. To prevent abuse, ZymBot does not access to a search engine for prompts made in Direct Messages. Please send your message in a public chat."
+                                else:
+                                    response = request_kagi(message.content)
                             elif message.guild is not None and message.guild.id == 612289903769944064:
                                 print("Message sent in RoFT, using Llama 3")
                                 response = request_deepinfra(message.content, 2)
