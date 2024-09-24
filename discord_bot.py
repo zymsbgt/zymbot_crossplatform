@@ -25,7 +25,7 @@ class DiscordBot:
             print("Servers I'm currently in:")
             for server in servers:
                 print(server.name)
-            print('Server successfully started as {0.user}'.format(self.DiscordBotClient))
+            print('server successfully started as {0.user}'.format(self.DiscordBotClient))
             activity = discord.Activity(type=discord.ActivityType.listening, name="people I'm chatting with (ping me!)")
             await self.DiscordBotClient.change_presence(activity=activity)
 
@@ -53,11 +53,12 @@ class DiscordBot:
                 # Create a downloader algorithm for Twitter
 
             username = str(message.author).split('#')[0]
-            channel = str(message.channel.name)
-            guild = str(message.guild.name)
 
             if self.DiscordBotClient.user.mentioned_in(message):
-                print(f'{username} on #{channel} in "{guild}": {message.content}')
+                if message.guild is None:
+                    print(f'{username} in Direct Message: {message.content}')
+                else:
+                    print(f'{username} on #{message.channel.name} in "{message.guild.name}": {message.content}')
 
                 if any(links in message.content for links in TriggerLinks):
                     print("Download module activated, not replying with chatbot")
