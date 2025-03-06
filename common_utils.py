@@ -12,7 +12,7 @@ deepInfra = OpenAI(
     base_url="https://api.deepinfra.com/v1/openai",
 )
 
-TriggerLinks = ['instagram.com/reel', 'instagram.com/p', 'youtube.com/watch?v=', 'youtu.be/', 'youtube.com/shorts/', 'vt.tiktok.com/', 'tiktok.com/t', 'twitter.com/', 'soundcloud.com/']
+TriggerLinks = ['instagram.com/reel', 'instagram.com/p', 'youtube.com/watch?v=', 'youtu.be/', 'youtube.com/shorts/', 'vt.tiktok.com/', 'tiktok.com/t', 'tiktok.com/@', 'twitter.com/', 'soundcloud.com/']
 conversation_history = []  # Store both user messages and bot responses
 
 def PromptBuilder(user_message):
