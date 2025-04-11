@@ -42,9 +42,8 @@ class DiscordBot:
             global TriggerLinks
             if any(keyword in message.content for keyword in TriggerLinks):
                 if isPinged == False:
-                    if message.guild is not None:
-                        if message.guild.id == 612289903769944064: # RoFT Fan Chat
-                            return
+                    if message.guild is not None and message.guild.id == 612289903769944064: # RoFT Fan Chat
+                        return
                     # await message.add_reaction("🎬")
                     # await message.add_reaction("🎵")
                 else:
