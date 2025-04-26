@@ -5,12 +5,14 @@ from dotenv import load_dotenv
 import requests
 import re
 
-load_dotenv()
+if __name__ != "__main__":
+    print("Note: Running in Online - Discord Bot mode. DeepInfra enabled.")
+    load_dotenv()
 
-deepInfra = OpenAI(
-    api_key=os.getenv("DEEPINFRA_API_KEY"),
-    base_url="https://api.deepinfra.com/v1/openai",
-)
+    deepInfra = OpenAI(
+        api_key=os.getenv("DEEPINFRA_API_KEY"),
+        base_url="https://api.deepinfra.com/v1/openai",
+    )
 
 TriggerLinks = ['instagram.com/reel', 'instagram.com/p', 'youtube.com/watch?v=', 'youtu.be/', 'youtube.com/shorts/', 'vt.tiktok.com/', 'tiktok.com/t', 'tiktok.com/@', 'twitter.com/', 'x.com/', 'soundcloud.com/']
 conversation_history = []  # Store both user messages and bot responses
@@ -74,12 +76,25 @@ def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator
         print(completion.choices[0].message.content)
         return "An error occurred while generating this response."  # Return an empty string or handle the error appropriately
 
-def request_kagi(user_message):
+def request_kagi(user_message, DiscordBotMode = True):
     try:
         api_key = os.getenv("KAGI_API_KEY")
         if not api_key:
-            print("Error: KAGI_API_KEY is not set.")
-            return "API key is missing."
+            try:
+                filepath = "secrets.txt"
+
+                # Open the file explicitly
+                with open(filepath, "r") as file:
+                    api_key = file.read()
+            except FileNotFoundError:
+                print(f"The {filepath} file does not exist.")
+                print("Error: KAGI_API_KEY is not set.")
+                return "API key is missing."
+            except Exception as e:
+                print(f"An error occurred while reading {filepath}: {e}")
+                print("Error: KAGI_API_KEY is not set.")
+                return "API key is missing."
+            
 
         base_url = 'https://kagi.com/api/v0/fastgpt'
         data = {
@@ -99,13 +114,14 @@ def request_kagi(user_message):
             # Print the number of tokens
             print("\nNumber of Tokens:", tokens)
 
-            # Create a mapping of reference numbers to URLs
-            reference_map = {str(i + 1): ref.get("url", "") for i, ref in enumerate(references)}
+            if DiscordBotMode == True:
+                # Create a mapping of reference numbers to URLs
+                reference_map = {str(i + 1): ref.get("url", "") for i, ref in enumerate(references)}
 
-            # Hyperlink the references in the output text using Discord formatting
-            for ref_num, ref_url in reference_map.items():
-                if ref_url:  # Only hyperlink if the URL is valid
-                    output = re.sub(rf'【{ref_num}】', f'[【{ref_num}】](<{ref_url}>)', output)
+                # Hyperlink the references in the output text using Discord formatting
+                for ref_num, ref_url in reference_map.items():
+                    if ref_url:  # Only hyperlink if the URL is valid
+                        output = re.sub(rf'【{ref_num}】', f'[【{ref_num}】](<{ref_url}>)', output)
 
             # Print references
             print("\nReferences:")
@@ -113,6 +129,7 @@ def request_kagi(user_message):
                 title = reference.get("title", "")
                 url = reference.get("url", "")
                 print(f"- {title}: {url}")
+            print("\n")
             return output
         else:
             print(f"Error: Status Code {response.status_code}")
@@ -125,3 +142,13 @@ def request_kagi(user_message):
 
 async def DownloadVideo(ChatPlatform, MessageContent, DebugMode = False, AudioOnly = False):
     pass
+
+if __name__ == "__main__":
+    while True:
+        print("Enter a search query (or /bye to quit): ")
+        user_message = input()
+        if user_message == "/bye":
+            print("Goodbye!")
+            break
+        else:
+            print(request_kagi(user_message, False))
