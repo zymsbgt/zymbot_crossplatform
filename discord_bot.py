@@ -2,6 +2,7 @@ from common_utils import request_deepinfra, request_kagi, TriggerLinks, Download
 import discord
 from discord.ext import commands
 import asyncio
+import time
 
 class DiscordBot:
     # Setup bot global variables here, if any
@@ -71,6 +72,9 @@ class DiscordBot:
                             # Send prompt to ChatGPT
                             if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772:
                                 response = request_deepinfra(message.content, 1)
+                            elif "seahorse emoji" in message.content.lower() or "seahorse emote" in message.content.lower():
+                                time.sleep(4)
+                                response = "There is no seahorse emoji in Ba Sing Se."
                             elif "flashteens" in message.content.lower() or "web search" in message.content.lower() or "roft" in message.content.lower():
                                 if message.guild is None:
                                     response = "**Error:** Your message has triggered ZymBot to search the internet for answers. To prevent abuse, ZymBot does not access to a search engine for prompts made in Direct Messages. Please send your message in a public chat."
