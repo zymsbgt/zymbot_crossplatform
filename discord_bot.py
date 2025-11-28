@@ -72,7 +72,7 @@ class DiscordBot:
                             # Send prompt to ChatGPT
                             if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772:
                                 response = request_deepinfra(message.content, 1)
-                            elif "seahorse emo" in message.content.lower():
+                            elif "seahorse" in message.content.lower() and "emo" in message.content.lower():
                                 time.sleep(4)
                                 response = "There is no seahorse emoji in Ba Sing Se."
                             elif "flashteens" in message.content.lower() or "web search" in message.content.lower() or "roft" in message.content.lower():
