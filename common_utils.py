@@ -52,29 +52,40 @@ def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator
             messages = [{"role": "system", "content": "You are ZymBot, a chatbot chatting with humans on Discord. Your Discord tag is <@302299077368872961>. If someone types this in a message, they are mentioning you on Discord."},{"role": "user", "content": user_message}]
         print(f"Sending prompt to DeepInfra: {messages}")
 
-        if personaType == 2: 
-            completion = deepInfra.chat.completions.create(
-                model="meta-llama/Meta-Llama-3-8B-Instruct",
-                messages=messages,
-                max_tokens=665,
-                stop=None,
-                stream=False
-            )
-            return completion.choices[0].message.content
+        completion = deepInfra.chat.completions.create(
+            model="Qwen/Qwen2-72B-Instruct",
+            messages=messages,
+            max_tokens=665,
+            stop=None,
+            stream=False
+        )
+        if len(completion.choices[0].message.content) > 2000:
+            # Need code to split the message
+            return split_message(completion.choices[0].message.content)
         else:
-            completion = deepInfra.chat.completions.create(
-                model="Qwen/Qwen2-72B-Instruct",
-                messages=messages,
-                max_tokens=665,
-                stop=None,
-                stream=False
-            )
             return completion.choices[0].message.content
 
     except Exception as e:
         print(f"An error occurred: {e}")
         print(completion.choices[0].message.content)
         return "An error occurred while generating this response."  # Return an empty string or handle the error appropriately
+
+def split_message(text, limit=2000):
+    # Split the message into parts not exceeding the limit
+    parts = []
+    while len(text) > limit:
+        # Find the last space within limit to split the message properly
+        split_point = text.rfind(" ", 0, limit)
+        if split_point == -1:
+            split_point = limit  # If no space is found, split at the limit
+        
+        parts.append(text[:split_point])
+        text = text[split_point:].strip()  # Remove the part we've taken
+        
+    if text:
+        parts.append(text)  # Add the remaining part
+
+    return parts
 
 def request_kagi(user_message, DiscordBotMode = True):
     try:

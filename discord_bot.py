@@ -50,7 +50,7 @@ class DiscordBot:
                 else:
                     await DownloadVideo("discord", message.content, CheckDebugMode(message.guild.id))
                 
-                # Create a downloader algorithm for Twitter
+                # TODO: Create a downloader algorithm for Twitter
 
             username = str(message.author).split('#')[0]
 
@@ -70,27 +70,31 @@ class DiscordBot:
                     try:
                         async with message.channel.typing():
                             # Send prompt to ChatGPT
-                            if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772:
+                            if message.guild is not None and message.guild.id == 443253214859755522 and message.channel.id == 1251486676736540772: # Dictator ZymBot jail
                                 response = request_deepinfra(message.content, 1)
                             elif "seahorse" in message.content.lower() and "emo" in message.content.lower():
                                 time.sleep(4)
                                 response = "There is no seahorse emoji in Ba Sing Se."
                             elif "flashteens" in message.content.lower() or "web search" in message.content.lower() or "roft" in message.content.lower():
                                 if message.guild is None:
-                                    response = "**Error:** Your message has triggered ZymBot to search the internet for answers. To prevent abuse, ZymBot does not access to a search engine for prompts made in Direct Messages. Please send your message in a public chat."
+                                    response = "**Error:** Your message has triggered ZymBot to search the internet for answers. To prevent abuse, ZymBot does not have access to a search engine for prompts made in Direct Messages. Please send your message in a public chat."
                                 else:
                                     response = request_kagi(message.content)
-                            elif message.guild is not None and message.guild.id == 612289903769944064:
-                                print("Message sent in RoFT, using Llama 3")
-                                response = request_deepinfra(message.content, 2)
                             else:
                                 response = request_deepinfra(message.content, 0)
 
-                            # TODO: If the Discord server ID is '612289903769944064', replace every Discord ping with the name of the user
-                            response = response.replace("<@343451476137607179>", "FlashTeens")
-                            response = response.replace("<@559210445991444480>", "OTS")
-                            response = response.replace("<@1017991668194099200>", "FT Anti-Ping Bot")
-                            await message.channel.send(response)
+                            #TODO: The response from the functions could either be a string or an array of strings. I need to modify this code to accomodate both string and array strings before sending
+                            if isinstance(response, list):
+                                for part in response:
+                                    part = part.replace("<@343451476137607179>", "FlashTeens")
+                                    part = part.replace("<@559210445991444480>", "OTS")
+                                    part = part.replace("<@1017991668194099200>", "FT Anti-Ping Bot")
+                                    await message.channel.send(part)
+                            else:
+                                response = response.replace("<@343451476137607179>", "FlashTeens")
+                                response = response.replace("<@559210445991444480>", "OTS")
+                                response = response.replace("<@1017991668194099200>", "FT Anti-Ping Bot")
+                                await message.channel.send(response)
                     except Exception as e:
                         await message.channel.send(f"Error sending message: {e}")
                         print(response)
