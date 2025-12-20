@@ -38,6 +38,8 @@ class DiscordBot:
                 return
             
             if self.DiscordBotClient.user.mentioned_in(message):
+                if "@everyone" in message.content or "@here" in message.content:
+                    return
                 isPinged = True
 
             global TriggerLinks
