@@ -11,7 +11,7 @@ if __name__ != "__main__":
 
     deepInfra = OpenAI(
         api_key=os.getenv("DEEPINFRA_API_KEY"),
-        base_url="https://api.deepinfra.com/v1/openai",
+        base_url="https://inference.hetzner.com/api/v1",
     )
 
 TriggerLinks = ['instagram.com/reel', 'instagram.com/p', 'youtube.com/watch?v=', 'youtu.be/', 'youtube.com/shorts/', 'vt.tiktok.com/', 'tiktok.com/t', 'tiktok.com/@', 'twitter.com/', 'x.com/', 'soundcloud.com/']
@@ -53,7 +53,7 @@ def request_deepinfra(user_message, personaType = 0): # 0 = Normal, 1 = Dictator
         print(f"Sending prompt to DeepInfra: {messages}")
 
         completion = deepInfra.chat.completions.create(
-            model="Qwen/Qwen2-72B-Instruct",
+            model="Qwen/Qwen3.6-35B-A3B-FP8",
             messages=messages,
             max_tokens=665,
             stop=None,
