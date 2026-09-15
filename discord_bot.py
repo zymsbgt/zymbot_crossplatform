@@ -1,17 +1,21 @@
-from common_utils import request_deepinfra, request_kagi, TriggerLinks, DownloadVideo
+from common_utils import request_deepinfra, request_kagi, split_message, TriggerLinks, DownloadVideo
 import discord
+from discord import app_commands
 from discord.ext import commands
 import asyncio
 import time
 
 class DiscordBot:
     # Setup bot global variables here, if any
+    NoReplyChannels = {1220894297734512640, 1227499494388793345} # ZymBot doesn't chat in these
 
     def __init__(self, token):
         self.token = token
         intents = discord.Intents.default()
         intents.message_content = True
         self.DiscordBotClient = discord.Client(intents = intents)
+        # A plain Client has no slash commands of its own, so they hang off this tree
+        self.CommandTree = app_commands.CommandTree(self.DiscordBotClient)
 
     # ../bot.py will call this function upon startup
     def start(self):
@@ -19,6 +23,51 @@ class DiscordBot:
             if GuildId == 443253214859755522:
                 return True
             return False
+
+        async def setup_hook():
+            # Runs once before connecting. A global sync can take up to an hour to show a new command in Discord
+            try:
+                await self.CommandTree.sync()
+            except discord.HTTPException as e:
+                print(f"Could not sync slash commands: {e}")
+
+        # Assigned rather than decorated with @event, because setup_hook is a Client method and not an event
+        self.DiscordBotClient.setup_hook = setup_hook
+
+        @self.CommandTree.command(name="web_search", description="Ask a question and get an answer from Kagi web search")
+        @app_commands.describe(query="What you want to know")
+        @app_commands.guild_only() # Same rule as the keyword trigger: no web search from Direct Messages
+        @app_commands.checks.cooldown(1, 20.0) # Per user, since every search is a paid Kagi request
+        async def search(interaction: discord.Interaction, query: app_commands.Range[str, 1, 500]):
+            if interaction.channel_id in self.NoReplyChannels:
+                await interaction.response.send_message("ZymBot doesn't reply in this channel.", ephemeral=True)
+                return
+
+            print(f'{interaction.user} used /web_search in "{interaction.guild.name}": {query}')
+
+            # Kagi can take several seconds and Discord wants a reply within 3, so acknowledge first
+            await interaction.response.defer(thinking=True)
+
+            # request_kagi uses requests, which blocks. Off the event loop, the bot stays connected while it waits
+            response = await asyncio.to_thread(request_kagi, query)
+            if not response:
+                response = "Kagi didn't return an answer. Please try again in a moment."
+
+            for part in split_message(response):
+                await interaction.followup.send(part, allowed_mentions=discord.AllowedMentions.none())
+
+        @search.error
+        async def search_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+            if isinstance(error, app_commands.CommandOnCooldown):
+                message = f"You're searching too fast - try again in {int(error.retry_after) + 1}s."
+            else:
+                print(f"/web_search error: {error}")
+                message = "Something went wrong running that search."
+
+            if interaction.response.is_done():
+                await interaction.followup.send(message, ephemeral=True)
+            else:
+                await interaction.response.send_message(message, ephemeral=True)
 
         @self.DiscordBotClient.event
         async def on_ready():
@@ -68,7 +117,7 @@ class DiscordBot:
                     return
                 
                 await asyncio.sleep(4)
-                if message.channel.id != 1220894297734512640 and message.channel.id != 1227499494388793345:
+                if message.channel.id not in self.NoReplyChannels:
                     try:
                         async with message.channel.typing():
                             # Send prompt to ChatGPT
