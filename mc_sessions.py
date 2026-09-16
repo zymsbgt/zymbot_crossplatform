@@ -405,19 +405,30 @@ def load_players(reload: bool = False) -> tuple | None:
         print(f"Minecraft sessions: no usable mc_players.py ({exc}) - nobody will be asked for feedback")
         return None
 
-    by_name, by_uuid = {}, {}
-    for name, discord_id in dict(getattr(mc_players, "PLAYERS", {})).items():
-        if not mc_status.MINECRAFT_NAME.match(str(name)) or not str(discord_id).isdigit():
-            print(f"Minecraft sessions: skipping mc_players entry {name!r} -> {discord_id!r}")
-            continue
-        by_name[str(name).lower()] = {"name": str(name), "discord": int(discord_id)}
+    def discord_id_of(value):
+        """0 is the placeholder a half-filled table carries, and is not an id."""
+        text = str(value).strip()
+        return int(text) if text.isdigit() and int(text) > 0 else None
 
-    for uuid, discord_id in dict(getattr(mc_players, "UUIDS", {})).items():
-        key = normalise_uuid(uuid)
-        if key is None or not str(discord_id).isdigit():
-            print(f"Minecraft sessions: skipping mc_players UUID entry {uuid!r} -> {discord_id!r}")
+    by_name, by_uuid = {}, {}
+    for name, entry in dict(getattr(mc_players, "PLAYERS", {})).items():
+        # Either "Name": id, or "Name": {"discord": id, "uuid": "..."} so a player is one line to edit.
+        details = entry if isinstance(entry, dict) else {"discord": entry}
+        discord_id = discord_id_of(details.get("discord"))
+        if not mc_status.MINECRAFT_NAME.match(str(name)) or discord_id is None:
+            print(f"Minecraft sessions: skipping mc_players entry {name!r} - it still needs a Discord id")
             continue
-        by_uuid[key] = int(discord_id)
+        by_name[str(name).lower()] = {"name": str(name), "discord": discord_id}
+        uuid = normalise_uuid(details.get("uuid")) if details.get("uuid") else None
+        if uuid:
+            by_uuid[uuid] = discord_id
+
+    for uuid, value in dict(getattr(mc_players, "UUIDS", {})).items():
+        key, discord_id = normalise_uuid(uuid), discord_id_of(value)
+        if key is None or discord_id is None:
+            print(f"Minecraft sessions: skipping mc_players UUID entry {uuid!r} -> {value!r}")
+            continue
+        by_uuid[key] = discord_id
 
     return by_name, by_uuid
 

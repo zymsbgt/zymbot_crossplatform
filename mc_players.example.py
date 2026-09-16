@@ -17,13 +17,13 @@ Discord user ids: Settings > Advanced > Developer Mode, then right-click somebod
 /mc-admin players lists the table and re-reads this file, so adding somebody needs no restart.
 """
 
-# "Minecraft name": Discord user id
+# "Minecraft name": {"discord": <Discord user id>, "uuid": "<optional, from usercache.json>"}
+# A bare "Minecraft name": <Discord user id> works too. An entry holding 0 is skipped and logged.
 PLAYERS = {
-    "ZymSB": 111111111111111111,
+    "ZymSB": {"discord": 111111111111111111, "uuid": "4566e69f-c907-48ee-8d71-d7ba5aa00d20"},
     "Player_2": 222222222222222222,
 }
 
-# "uuid": Discord user id. Checked before the names above.
+# Extra UUIDs for anybody who plays on a second account, as "uuid": <Discord user id>.
 UUIDS = {
-    "4566e69f-c907-48ee-8d71-d7ba5aa00d20": 111111111111111111,
 }
