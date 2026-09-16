@@ -4,6 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 import asyncio
 import time
+import mc_sessions
 
 class DiscordBot:
     # Setup bot global variables here, if any
@@ -25,6 +26,9 @@ class DiscordBot:
             return False
 
         async def setup_hook():
+            # Unattended Minecraft sessions. Registers its own per-server commands, and does nothing unless configured in .env
+            await mc_sessions.attach(self.DiscordBotClient, self.CommandTree)
+
             # Runs once before connecting. A global sync can take up to an hour to show a new command in Discord
             try:
                 await self.CommandTree.sync()
