@@ -16,7 +16,9 @@ When a session is over
   MC_STOP_WARN_MINUTES before, and anyone joining cancels it.
 * Until then it only stops when empty, and not before MC_NO_SHOW_MINUTES after boot. One early player
   keeps it up rather than getting shut out for arriving first.
-* MC_HARD_STOP (HH:MM in MC_TIMEZONE) stops it whatever else is true, warning at 10 and 1 minutes.
+* MC_HARD_STOP stops it whatever else is true, warning at 10 minutes, 1 minute and 30 seconds. Either
+  a clock time in MC_TIMEZONE ("02:00", the next one after the session starts) or a length ("6h",
+  "90m", "6h30m") measured from the moment the bot picks the session up.
 * A player count that cannot be read is unknown, never empty. Only the hard stop acts without one.
 
 Stopping always uses the panel's stop signal, which types "stop" into the console. Never kill:
@@ -92,7 +94,7 @@ Setup
   MC_STOP_GRACE_MINUTES     default 15
   MC_STOP_WARN_MINUTES      default 5
   MC_NO_SHOW_MINUTES        default 60
-  MC_HARD_STOP              HH:MM, empty = no end time
+  MC_HARD_STOP              HH:MM clock time, or a length like 6h / 90m / 6h30m. Empty = no end time
   MC_TIMEZONE               default UTC, e.g. Europe/London
   MC_CRASH_WAIT_MINUTES     default 5
   MC_POLL_SECONDS           default 60
@@ -209,8 +211,9 @@ class Config:
                 tz = timezone.utc
 
         hard_stop = os.getenv("MC_HARD_STOP", "").strip()
-        if hard_stop and parse_clock(hard_stop) is None:
-            print(f"Minecraft sessions: MC_HARD_STOP={hard_stop!r} is not HH:MM, so there is no end time")
+        if hard_stop and parse_deadline(hard_stop) is None:
+            print(f"Minecraft sessions: MC_HARD_STOP={hard_stop!r} is neither HH:MM nor a length like 6h, "
+                  "so there is no end time")
             hard_stop = ""
 
         form_url = os.getenv("MC_FORM_URL", "").strip()
@@ -256,6 +259,24 @@ def parse_clock(text: str):
         return None
     hour, minute = int(match[1]), int(match[2])
     return (hour, minute) if hour < 24 and minute < 60 else None
+
+
+def parse_deadline(text: str):
+    """
+    ("clock", (hour, minute)) for a time of day, or ("after", seconds) for a length.
+
+    One setting takes both because they answer the same question in different words: "be off by 2am"
+    and "run for six hours" are each the natural phrasing for some sessions.
+    """
+    text = text.strip().lower()
+    clock = parse_clock(text)
+    if clock:
+        return "clock", clock
+    span = re.fullmatch(r"(?:(\d+)h)?(?:(\d+)m)?", text)
+    if not text or not span or not (span[1] or span[2]):
+        return None
+    seconds = int(span[1] or 0) * 3600 + int(span[2] or 0) * 60
+    return ("after", seconds) if seconds > 0 else None
 
 
 def next_clock_time(after: float, clock: str, tz: tzinfo) -> float:
@@ -810,7 +831,10 @@ class Watcher:
         self.save()
 
     def open_run(self, now: float) -> Run:
-        hard = next_clock_time(now, self.cfg.hard_stop, self.cfg.tz) if self.cfg.hard_stop else None
+        hard = None
+        if self.cfg.hard_stop:
+            kind, value = parse_deadline(self.cfg.hard_stop)
+            hard = now + value if kind == "after" else next_clock_time(now, self.cfg.hard_stop, self.cfg.tz)
         return Run(started=now, hard_stop_at=hard)
 
     async def boot_checks(self, run: Run) -> None:
