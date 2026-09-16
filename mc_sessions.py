@@ -129,15 +129,17 @@ import mc_status
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "mc_sessions_data"
 
-HARD_STOP_WARNINGS = (10, 1)    # minutes before MC_HARD_STOP
+HARD_STOP_WARNINGS = (600, 60, 30)   # seconds before MC_HARD_STOP
+FINAL_WARNINGS = (60, 30)            # seconds before any stop, on top of MC_STOP_WARN_MINUTES
+STOP_MESSAGE_LEAD = 3                # seconds between the goodbye and the server actually going
 LOG_READ_EVERY = 10             # ticks between reads of latest.log during a session
 BOOT_READ_TRIES = 5             # ticks to wait for this boot's telemetry row to appear
 STUCK_STOPPING_SECONDS = 600    # still up this long after a stop, somebody should look
 FORM_ID_CHARS = 12              # base32 characters of HMAC inside a form id
 MESSAGE_LIMIT = 2000
 
-DEFAULT_FORM_MESSAGE = ("Hi {name}, thanks for playing on the CivFabric server today. A couple of minutes "
-                        "of feedback would help a lot - the form already knows which session you played.")
+DEFAULT_FORM_MESSAGE = ("Hi {name}, thanks for playing on the ZymLabs server today. Zym would appreciate "
+                        "if you could fill up this feedback form!")
 
 
 # --- config -----------------------------------------------------------------------------------------
@@ -194,12 +196,17 @@ class Config:
         port = number("MC_PORT", 25565)
 
         tz_name = os.getenv("MC_TIMEZONE", "").strip() or "UTC"
-        try:
-            from zoneinfo import ZoneInfo
-            tz = ZoneInfo(tz_name)
-        except Exception:
-            print(f"Minecraft sessions: unknown MC_TIMEZONE {tz_name!r}, using UTC")
+        if tz_name.upper() == "UTC":
+            # Named zones need the system tz database, which a slim container may not carry. UTC does not.
             tz = timezone.utc
+        else:
+            try:
+                from zoneinfo import ZoneInfo
+                tz = ZoneInfo(tz_name)
+            except Exception as exc:
+                print(f"Minecraft sessions: cannot use MC_TIMEZONE {tz_name!r} ({exc}) - falling back to UTC. "
+                      "A container without the tz database needs the tzdata package.")
+                tz = timezone.utc
 
         hard_stop = os.getenv("MC_HARD_STOP", "").strip()
         if hard_stop and parse_clock(hard_stop) is None:
@@ -268,6 +275,20 @@ def minutes_text(seconds: float) -> str:
     return "1 minute" if minutes == 1 else "under a minute"
 
 
+def countdown_text(seconds: float) -> str:
+    """Rounded the way somebody reading chat would say it, down to ten-second steps."""
+    if seconds >= 90:
+        return f"{round(seconds / 60)} minutes"
+    if seconds >= 45:
+        return "1 minute"
+    return f"{max(5, int(round(seconds / 10)) * 10)} seconds"
+
+
+def warn_points(cfg) -> list:
+    """When to warn before a stop: the configured one, then the last-minute reminders."""
+    return sorted({point for point in (cfg.warn,) + FINAL_WARNINGS if 0 < point < cfg.grace}, reverse=True)
+
+
 def span_text(seconds: float) -> str:
     hours, minutes = divmod(int(seconds // 60), 60)
     return f"{hours}h {minutes:02d}m" if hours else f"{minutes}m"
@@ -284,7 +305,7 @@ class Run:
     hard_stop_at: float | None = None
     peak: int = 0
     low_since: float | None = None
-    low_warned: bool = False
+    low_warned_at: list = field(default_factory=list)   # warning points already said
     empty_since: float | None = None
     hard_warned: list = field(default_factory=list)
     roster: dict = field(default_factory=dict)      # Minecraft name -> uuid, "" when only the log saw them
@@ -338,10 +359,10 @@ def decide(run: Run, cfg: Config, now: float, online: int | None) -> Decision | 
         if left <= 0:
             return Decision("stop", "That's the end of today's session - the server is stopping now. Thanks for playing!",
                             "reached the end time")
-        due = [m for m in HARD_STOP_WARNINGS if left <= m * 60 and m not in run.hard_warned]
+        due = [point for point in HARD_STOP_WARNINGS if left <= point and point not in run.hard_warned]
         if due:
             run.hard_warned.extend(due)
-            return Decision("say", f"The server closes for the day in {minutes_text(left)}.")
+            return Decision("say", f"The server closes for the day in {countdown_text(left)}.")
 
     if online is None:
         return None
@@ -352,8 +373,8 @@ def decide(run: Run, cfg: Config, now: float, online: int | None) -> Decision | 
         run.empty_since = None
 
         if online > cfg.threshold:
-            warned = run.low_warned
-            run.low_since, run.low_warned = None, False
+            warned = bool(run.low_warned_at)
+            run.low_since, run.low_warned_at = None, []
             return Decision("say", "Players are back, so the server is staying up.") if warned else None
 
         if run.low_since is None:
@@ -363,10 +384,12 @@ def decide(run: Run, cfg: Config, now: float, online: int | None) -> Decision | 
         if left <= 0:
             return Decision("stop", "The session is over - the server is stopping now. Thanks for playing!",
                             f"{online} online for {minutes_text(cfg.grace)} (threshold {cfg.threshold})")
-        if left <= cfg.warn and not run.low_warned:
-            run.low_warned = True
+        due = [point for point in warn_points(cfg) if left <= point and point not in run.low_warned_at]
+        if due:
+            # Every point still owed is marked, so a slow tick that skips one does not say it late.
+            run.low_warned_at.extend(due)
             who = "Everyone has" if online == 0 else "Most players have"
-            return Decision("say", f"{who} left, so the server stops in {minutes_text(left)}. Anyone joining keeps it up.")
+            return Decision("say", f"{who} left, so the server stops in {countdown_text(left)}. Anyone joining keeps it up.")
         return None
 
     # Never busier than the threshold. One player keeps it up; an empty server closes once the no-show
@@ -686,7 +709,30 @@ class Watcher:
                 await self.tick(time.time())
             except Exception:
                 traceback.print_exc()
-            await asyncio.sleep(self.cfg.poll)
+            await asyncio.sleep(self.next_delay())
+
+    def next_delay(self) -> float:
+        """
+        How long to wait before the next tick.
+
+        A minute between polls would land a "30 seconds" warning anywhere in the half minute after it
+        was due, so as a deadline approaches the loop tightens up to meet it. Never below five seconds,
+        which is far more often than anything here needs.
+        """
+        run = self.run
+        if run is None or run.hold or run.stopping or run.pending_stop:
+            return self.cfg.poll
+
+        deadlines = []
+        if run.hard_stop_at is not None:
+            deadlines += [run.hard_stop_at] + [run.hard_stop_at - point for point in HARD_STOP_WARNINGS]
+        if run.low_since is not None and run.peak > self.cfg.threshold:
+            stop_at = run.low_since + self.cfg.grace
+            deadlines += [stop_at] + [stop_at - point for point in warn_points(self.cfg)]
+
+        now = time.time()
+        ahead = [deadline - now for deadline in deadlines if deadline > now]
+        return max(5.0, min([self.cfg.poll] + ahead))
 
     async def tick(self, now: float) -> None:
         self.ticks += 1
@@ -705,7 +751,7 @@ class Watcher:
                 return
             run = self.run = self.open_run(now)
             self.save()
-            await self.post(self.cfg.announce_channel, f"The CivFabric server is starting up - `{self.cfg.address}`")
+            await self.post(self.cfg.announce_channel, f"The ZymLabs server is starting up - `{self.cfg.address}`")
 
         if state == "stopping":
             return
@@ -850,6 +896,8 @@ class Watcher:
     async def stop(self, run: Run, now: float, reason: str, message: str | None) -> None:
         if message and run.stop_failures == 0:
             await self.say(message)
+            # Chat is only worth saying if it arrives before the shutdown wipes it off the screen.
+            await asyncio.sleep(STOP_MESSAGE_LEAD)
         run.pending_stop = reason
         try:
             await self.panel.power("stop")
@@ -902,7 +950,7 @@ class Watcher:
                 lines.append(f"Couldn't DM (DMs closed?): {', '.join(failed)}")
 
         await self.staff("\n".join(lines))
-        await self.post(self.cfg.announce_channel, "The CivFabric server is closed for now. Thanks for playing!")
+        await self.post(self.cfg.announce_channel, "The ZymLabs server is closed for now. Thanks for playing!")
 
         entry = asdict(run)
         entry.update(ended=now, crashed=crashed, session_key=session)
@@ -1027,7 +1075,7 @@ def register_commands(tree: app_commands.CommandTree, watcher: Watcher) -> None:
             return
         run = watcher.run
         run.hold, run.send_feedback = True, send_feedback
-        run.low_since, run.low_warned, run.empty_since = None, False, None
+        run.low_since, run.low_warned_at, run.empty_since = None, [], None
         watcher.save()
         await interaction.response.send_message(
             "On hold - the server stays up until `/mc-admin resume` or you stop it."
@@ -1039,7 +1087,7 @@ def register_commands(tree: app_commands.CommandTree, watcher: Watcher) -> None:
             return
         run = watcher.run
         run.hold = False
-        run.low_since, run.low_warned, run.empty_since = None, False, None
+        run.low_since, run.low_warned_at, run.empty_since = None, [], None
         watcher.save()
         late = run.hard_stop_at is not None and run.hard_stop_at <= time.time()
         await interaction.response.send_message(

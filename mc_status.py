@@ -176,6 +176,11 @@ class Panel:
     async def read_file(self, path: str) -> str:
         return await self._request("GET", "/files/contents", params={"file": path}, expect="text")
 
+    async def close(self) -> None:
+        """Only a short-lived caller needs this - the bot holds one Panel for its whole life."""
+        if self.session is not None and not self.session.closed:
+            await self.session.close()
+
     async def list_dir(self, path: str) -> set[str]:
         data = await self._request("GET", "/files/list", params={"directory": path})
         return {entry["attributes"]["name"] for entry in data.get("data", [])}
